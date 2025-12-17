@@ -40,7 +40,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
     - name: Auth Google Cloud
