@@ -28,7 +28,7 @@ inputs:
   IMAGE_TAG:
     description: Tag for your image
     required: true
-  ENV:
+  IMAGE_ENV:
     description: Deployment environment (e.g. preview, stage, prod)
     required: true
   GKE_CONFIG_DIR:
@@ -66,11 +66,11 @@ runs:
         tags: ${{ env.ar_image_tag }}
         build-args: |
           version=${{ inputs.IMAGE_TAG }}
-          env=${{ inputs.ENV }}
+          env=${{ inputs.IMAGE_ENV }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Setup GKE Credentials
-      uses: google-github-actions/get-gke-credentials@v1
+      uses: google-github-actions/get-gke-credentials@v3
       with:
         cluster_name: ${{ inputs.GKE_CLUSTER }}
         location: ${{ inputs.GKE_ZONE }}
