@@ -40,6 +40,8 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Auth Google Cloud
       uses: google-github-actions/auth@v3
       with:
@@ -55,8 +57,6 @@ runs:
     - name: Setup AR image tag url
       shell: bash
       run: echo "ar_image_tag=${{ inputs.ARTIFACT_REGISTRY_REGION }}-docker.pkg.dev/${{ inputs.GOOGLE_CLOUD_PROJECT_ID }}/${{ inputs.ARTIFACT_REGISTRY_REPO }}/${{ inputs.ARTIFACT_REGISTRY_IMAGE }}:${{ inputs.IMAGE_TAG }}" >> $GITHUB_ENV
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
     - name: Build & push image (cached)
       uses: docker/build-push-action@v6
       with:
