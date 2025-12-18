@@ -66,8 +66,8 @@ runs:
         build-args: |
           version=${{ inputs.IMAGE_TAG }}
           env=${{ inputs.IMAGE_ENV }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=${{ github.repository }}-${{ inputs.ARTIFACT_REGISTRY_IMAGE }}
+        cache-to: type=gha,scope=${{ github.repository }}-${{ inputs.ARTIFACT_REGISTRY_IMAGE }},mode=max
     - name: Setup GKE Credentials
       uses: google-github-actions/get-gke-credentials@v3
       with:
