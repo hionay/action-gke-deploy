@@ -41,41 +41,55 @@ runs:
   using: composite
   steps:
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
     - name: Auth Google Cloud
-      uses: google-github-actions/auth@v3
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
       with:
         credentials_json: ${{ inputs.GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY }}
     - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v3
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
       with:
         project_id: ${{ inputs.GOOGLE_CLOUD_PROJECT_ID }}
     - name: Setup Docker Auth
       shell: bash
+      env:
+        ARTIFACT_REGISTRY_REGION: ${{ inputs.ARTIFACT_REGISTRY_REGION }}
       run: |
-        gcloud --quiet auth configure-docker ${{ inputs.ARTIFACT_REGISTRY_REGION }}-docker.pkg.dev
+        gcloud --quiet auth configure-docker "$ARTIFACT_REGISTRY_REGION-docker.pkg.dev"
     - name: Setup AR image tag url
+      id: ar_tag
       shell: bash
-      run: echo "ar_image_tag=${{ inputs.ARTIFACT_REGISTRY_REGION }}-docker.pkg.dev/${{ inputs.GOOGLE_CLOUD_PROJECT_ID }}/${{ inputs.ARTIFACT_REGISTRY_REPO }}/${{ inputs.ARTIFACT_REGISTRY_IMAGE }}:${{ inputs.IMAGE_TAG }}" >> $GITHUB_ENV
+      env:
+        ARTIFACT_REGISTRY_REGION: ${{ inputs.ARTIFACT_REGISTRY_REGION }}
+        GOOGLE_CLOUD_PROJECT_ID: ${{ inputs.GOOGLE_CLOUD_PROJECT_ID }}
+        ARTIFACT_REGISTRY_REPO: ${{ inputs.ARTIFACT_REGISTRY_REPO }}
+        ARTIFACT_REGISTRY_IMAGE: ${{ inputs.ARTIFACT_REGISTRY_IMAGE }}
+        IMAGE_TAG: ${{ inputs.IMAGE_TAG }}
+      run: |
+        echo "ar_image_tag=$ARTIFACT_REGISTRY_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$ARTIFACT_REGISTRY_REPO/$ARTIFACT_REGISTRY_IMAGE:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
     - name: Build & push image (cached)
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         context: .
         push: true
-        tags: ${{ env.ar_image_tag }}
+        tags: ${{ steps.ar_tag.outputs.ar_image_tag }}
         build-args: |
           version=${{ inputs.IMAGE_TAG }}
           env=${{ inputs.IMAGE_ENV }}
         cache-from: type=gha,scope=${{ github.repository }}-${{ inputs.ARTIFACT_REGISTRY_IMAGE }}
         cache-to: type=gha,scope=${{ github.repository }}-${{ inputs.ARTIFACT_REGISTRY_IMAGE }},mode=max
     - name: Setup GKE Credentials
-      uses: google-github-actions/get-gke-credentials@v3
+      uses: google-github-actions/get-gke-credentials@3da1e46a907576cefaa90c484278bb5b259dd395 # v3
       with:
         cluster_name: ${{ inputs.GKE_CLUSTER }}
         location: ${{ inputs.GKE_ZONE }}
     - name: Deploy image from AR to GKE
       shell: bash
+      env:
+        GKE_CONFIG_DIR: ${{ inputs.GKE_CONFIG_DIR }}
+        GKE_IMAGE_TEMPLATE: ${{ inputs.GKE_IMAGE_TEMPLATE }}
+        AR_IMAGE_TAG: ${{ steps.ar_tag.outputs.ar_image_tag }}
       run: |-
-        cd ${{ inputs.GKE_CONFIG_DIR }}
-        kustomize edit set image ${{ inputs.GKE_IMAGE_TEMPLATE }}=${{ env.ar_image_tag }}
+        cd "$GKE_CONFIG_DIR"
+        kustomize edit set image "$GKE_IMAGE_TEMPLATE=$AR_IMAGE_TAG"
         kubectl apply -k .
